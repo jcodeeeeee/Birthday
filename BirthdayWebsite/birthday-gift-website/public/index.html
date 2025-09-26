@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday!</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        /* Additional styles for the photo gallery */
+        #imageGallery {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        #imageGallery img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        #imageGallery img:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 2rem;
+            color: white;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        .modal-close:hover {
+            color: #ff66cc;
+        }
+
+        .modal-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 3rem;
+            color: white;
+            cursor: pointer;
+            background: none;
+            border: none;
+            z-index: 1001;
+        }
+
+        .modal-arrow:hover {
+            color: #ff66cc;
+        }
+
+        .modal-arrow.left {
+            left: 20px;
+        }
+
+        .modal-arrow.right {
+            right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎉 Happy Birthday! 🎂</h1>
+    </header>
+    <div class="container">
+        <div class="gift-card">
+            <h2>Dear Justine Deso,</h2>
+            <p>Wishing you a day filled with love, laughter, and all your favorite things. May this year bring you endless happiness and success!</p>
+            <p>🎁 Here's to celebrating you and all the joy you bring to the world! 🎈</p>
+        </div>
+        <div class="gift-card">
+            <h2>🎶 Birthday Song 🎶</h2>
+            <p>Click below to play or pause a special birthday song just for you!</p>
+            <button class="button" id="audioControlButton" onclick="toggleAudio()">Play Song</button>
+            <audio id="birthdaySong" src="audio/happy-birthday.mp3"></audio>
+        </div>
+        <div class="gift-card">
+            <h2>🎊 Surprise Message 🎊</h2>
+            <p>Click below to reveal a surprise message from your loved ones!</p>
+            <button class="button" onclick="revealMessage()">View Message</button>
+            <p id="surpriseMessage" style="display: none; font-size: 1.2rem; color: #ff66cc; margin-top: 15px;">
+                🎉 Surprise! You are loved more than you know. Have the best birthday ever! 🎈
+            </p>
+        </div>
+        <div class="gift-card">
+            <h2>📸 Upload and Display Pictures</h2>
+            <p>Upload multiple pictures to create a beautiful gallery!</p>
+            <input type="file" id="imageUpload" accept="image/*" multiple>
+            <div id="imageGallery"></div>
+        </div>
+    </div>
+
+    <!-- Modal for displaying images -->
+    <div class="modal" id="imageModal">
+        <button class="modal-close" onclick="closeModal()">×</button>
+        <button class="modal-arrow left" onclick="prevImage()">❮</button>
+        <img id="modalImage" src="" alt="Full-size image">
+        <button class="modal-arrow right" onclick="nextImage()">❯</button>
+    </div>
+
+    <script>
+        const imageUpload = document.getElementById('imageUpload');
+        const imageGallery = document.getElementById('imageGallery');
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+
+        let imageList = []; // Array to store all image URLs
+        let currentIndex = 0; // Track the currently displayed image index
+
+        function toggleAudio() {
+            const song = document.getElementById('birthdaySong');
+            const button = document.getElementById('audioControlButton');
+
+            if (song.paused) {
+                song.play();
+                button.textContent = "Pause Song";
+            } else {
+                song.pause();
+                button.textContent = "Play Song";
+            }
+        }
+
+        function revealMessage() {
+            const message = document.getElementById('surpriseMessage');
+            message.style.display = 'block'; // Show the hidden message
+        }
+
+        imageUpload.addEventListener('change', async function(event) {
+            const files = event.target.files;
+
+            // Create a FormData object to send files to the server
+            const formData = new FormData();
+            for (const file of files) {
+                formData.append('images', file);
+            }
+
+            try {
+                // Send the files to the backend
+                const response = await fetch('http://localhost:5000/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                // Clear the gallery before adding new images
+                imageGallery.innerHTML = '';
+
+                // Update the image list and display the uploaded images
+                imageList = data.files.map(filePath => `http://localhost:5000${filePath}`);
+                imageList.forEach((src, index) => {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.alt = 'Uploaded Image';
+                    img.onclick = () => openModal(index); // Open modal on click
+                    imageGallery.appendChild(img);
+                });
+            } catch (error) {
+                console.error('Error uploading images:', error);
+            }
+        });
+
+        // Fetch and display already uploaded images
+        async function fetchUploadedImages() {
+            try {
+                const response = await fetch('http://localhost:5000/images');
+                const data = await response.json();
+
+                // Clear the gallery before adding images
+                imageGallery.innerHTML = '';
+
+                // Update the image list and display the uploaded images
+                imageList = data.files.map(filePath => `http://localhost:5000${filePath}`);
+                imageList.forEach((src, index) => {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.alt = 'Uploaded Image';
+                    img.onclick = () => openModal(index); // Open modal on click
+                    imageGallery.appendChild(img);
+                });
+            } catch (error) {
+                console.error('Error fetching uploaded images:', error);
+            }
+        }
+
+        // Open the modal and display the clicked image
+        function openModal(index) {
+            currentIndex = index;
+            modalImage.src = imageList[currentIndex];
+            imageModal.style.display = 'flex';
+        }
+
+        // Close the modal
+        function closeModal() {
+            imageModal.style.display = 'none';
+        }
+
+        // Show the next image
+        function nextImage() {
+            currentIndex = (currentIndex + 1) % imageList.length;
+            modalImage.src = imageList[currentIndex];
+        }
+
+        // Show the previous image
+        function prevImage() {
+            currentIndex = (currentIndex - 1 + imageList.length) % imageList.length;
+            modalImage.src = imageList[currentIndex];
+        }
+
+        // Call the function to fetch and display images on page load
+        fetchUploadedImages();
+    </script>
+</body>
+</html>
